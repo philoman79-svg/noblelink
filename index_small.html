@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="노블링크 업무">
+<meta name="theme-color" content="#08090e">
+
+
+
+<title>노블링크 업무 관리</title>
+
+<!-- ══════════════════════════════════════════════
+     FIREBASE 설정 안내
+     아래 firebaseConfig 값을 본인의 Firebase 프로젝트
+     설정에서 복사해 붙여넣기 하세요.
+     Firebase Console → 프로젝트 설정 → 웹 앱 → SDK 설정
+     ══════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:       #08090e;
+  --surf1:    #0e1020;
+  --surf2:    #131528;
+  --surf3:    #191c38;
+  --border:   #1e2140;
+  --border2:  #272a50;
+  --accent:   #ff6a00;
+  --accent2:  rgba(255,106,0,.18);
+  --accent3:  rgba(255,106,0,.08);
+  --txt:      #ebebf5;
+  --txt2:     #8087a8;
+  --txt3:     #3a3f60;
+  --blue:     #4a8fff;
+  --green:    #22c55e;
+  --amber:    #f59e0b;
+  --purple:   #a78bfa;
+  --cyan:     #06b6d4;
+  --font-hd:  'Barlow Condensed', 'Apple SD Gothic Neo', sans-serif;
+  --font-bd:  'Barlow', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;background:var(--bg);font-family:var(--font-bd);}
+body{overflow-x:hidden;}
+
+/* ── HEADER ── */
+#hdr{
+  background:var(--surf1);
+  padding:14px 16px 12px;
+  border-bottom:1.5px solid var(--accent);
+  position:sticky;top:0;z-index:100;
+}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+.logo-mark{display:flex;align-items:center;gap:10px;}
+.logo-svg{width:36px;height:36px;flex-shrink:0;}
+.logo-text{line-height:1;}
+.logo-brand{font-family:var(--font-hd);font-size:20px;font-weight:900;color:var(--txt);letter-spacing:2px;}
+.logo-sub{font-family:var(--font-hd);font-size:11px;color:var(--accent);letter-spacing:3px;font-weight:600;}
+.sync-pill{font-size:10px;color:var(--txt3);font-family:var(--font-hd);letter-spacing:1px;font-weight:600;}
+
+.date-bar{display:flex;align-items:center;gap:8px;}
+.date-lbl{flex:1;font-family:var(--font-hd);font-size:16px;font-weight:700;color:var(--txt);letter-spacing:.5px;}
+.today-badge{
+  display:inline-block;margin-left:8px;
+  font-size:9px;background:var(--accent);color:#fff;
+  padding:2px 6px;border-radius:3px;
+  vertical-align:middle;letter-spacing:1px;font-weight:700;
+}
+#date-pick{
+  background:var(--accent);border:none;color:#fff;
+  padding:5px 8px;border-radius:6px;font-size:11px;
+  font-weight:700;cursor:pointer;outline:none;
+  font-family:var(--font-bd);
+}
+
+/* ── MAIN ── */
+#main{padding:14px 12px 60px;}
+
+/* ── SECTION ── */
+.sec{margin-bottom:20px;}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px;}
+.sec-ttl{
+  font-family:var(--font-hd);font-size:13px;font-weight:800;
+  letter-spacing:1.5px;text-transform:uppercase;
+}
+.add-btn{
+  background:transparent;border:1px solid currentColor;
+  padding:4px 12px;border-radius:5px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  font-family:var(--font-hd);letter-spacing:1px;
+  transition:background .15s;
+}
+.add-btn:hover{background:rgba(255,255,255,.06);}
+
+/* ── CARD ── */
+.card{
+  background:var(--surf1);border-radius:10px;
+  padding:13px;margin-bottom:7px;
+  border:1px solid var(--border);
+  border-left-width:3px;
+  transition:border-color .2s;
+}
+.card:hover{border-color:var(--border2);}
+.card-row{display:flex;align-items:flex-start;gap:6px;}
+.card-txt{font-size:13px;color:var(--txt);line-height:1.55;flex:1;word-break:break-all;}
+.card-meta{font-size:10px;color:var(--txt3);margin-top:3px;letter-spacing:.3px;}
+.del-btn{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:19px;line-height:1;padding:0 2px;flex-shrink:0;}
+.del-btn:hover{color:#e05050;}
+
+/* ── CHECK PILLS ── */
+.checks{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.chk{
+  padding:4px 11px;border-radius:12px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  border:1.5px solid var(--border2);
+  background:transparent;color:var(--txt3);
+  font-family:var(--font-hd);letter-spacing:.5px;
+  transition:all .15s;
+}
+.chk:hover{opacity:.8;}
+.chk.on{background:var(--chk-c);border-color:var(--chk-c);color:#fff;}
+
+/* ── OTHER TEXTAREA ── */
+.other-wrap{margin-top:9px;}
+.other-ta{
+  width:100%;background:var(--bg);
+  border:1px solid var(--purple);border-radius:6px;
+  color:var(--txt);padding:8px;font-size:12px;
+  resize:none;height:52px;
+  font-family:var(--font-bd);outline:none;
+}
+.char-cnt{text-align:right;font-size:10px;color:var(--txt3);margin-top:2px;}
+
+/* ── ADD FORM ── */
+.form-box{
+  background:var(--surf1);border-radius:10px;
+  padding:12px;margin-bottom:7px;
+  border:1px dashed var(--border2);
+}
+.form-ta{
+  width:100%;background:var(--bg);
+  border:1px solid var(--border2);border-radius:6px;
+  color:var(--txt);padding:9px;font-size:13px;
+  resize:none;height:68px;font-family:var(--font-bd);
+  outline:none;transition:border-color .2s;
+}
+.form-ta:focus{border-color:var(--accent);}
+.form-btns{display:flex;gap:8px;margin-top:9px;}
+.btn-ok{
+  flex:1;border:none;color:#fff;border-radius:7px;
+  padding:9px;font-weight:700;cursor:pointer;font-size:13px;
+  font-family:var(--font-hd);letter-spacing:1px;
+}
+.btn-no{
+  flex:1;background:var(--surf2);border:none;
+  color:var(--txt2);border-radius:7px;padding:9px;
+  cursor:pointer;font-size:13px;font-family:var(--font-hd);
+}
+
+/* ── EMPTY ── */
+.empty{
+  text-align:center;padding:16px;
+  color:var(--txt3);font-size:12px;
+  background:var(--surf1);border-radius:10px;
+  border:1px dashed var(--border);
+  font-family:var(--font-hd);letter-spacing:1px;
+}
+
+/* ── RETURN CARDS ── */
+.recv-btn{
+  padding:4px 12px;border-radius:12px;
+  border:1.5px solid var(--cyan);color:var(--cyan);
+  background:transparent;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:var(--font-hd);letter-spacing:.5px;
+  transition:all .15s;
+}
+.recv-btn:hover{background:rgba(6,182,212,.15);}
+.insp-btn{
+  padding:4px 12px;border-radius:12px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  font-family:var(--font-hd);letter-spacing:.5px;
+  transition:all .15s;
+}
+
+/* ── LOADER ── */
+#loader{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:80px 0;gap:16px;
+}
+.spinner{
+  width:32px;height:32px;
+  border:3px solid var(--border2);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.load-txt{font-family:var(--font-hd);font-size:13px;color:var(--txt3);letter-spacing:2px;}
+
+/* ── NOTICE CARD ── */
+.notice-card{
+  background:var(--surf1);border-radius:10px;
+  padding:14px;border:1px solid var(--border);
+  border-left:3px solid var(--purple);
+  min-height:50px;
+}
+.notice-txt{font-size:13px;color:var(--txt);line-height:1.65;white-space:pre-wrap;}
+
+/* ── DIVIDER ── */
+.sec-divider{
+  display:flex;align-items:center;gap:8px;
+  margin:4px 0 14px;opacity:.3;
+}
+.sec-divider::before,.sec-divider::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div class="hdr-top">
+    <div class="logo-mark">
+      <!-- Inline SVG logo mark -->
+      <svg class="logo-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="80" height="80" rx="14" fill="#0f1020"/>
+        <rect x="1" y="1" width="78" height="78" rx="13.5" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+        <!-- Ring arc element -->
+        <path d="M 18 42 A 24 24 0 0 1 62 42" fill="none" stroke="#ff6a00" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="18" cy="42" r="3.5" fill="#ff6a00"/>
+        <circle cx="62" cy="42" r="3.5" fill="#ff6a00"/>
+        <!-- Center dot -->
+        <circle cx="40" cy="40" r="3" fill="#ff6a00" opacity="0.6"/>
+        <!-- N letterform -->
+        <text x="40" y="66" text-anchor="middle"
+          font-family="'Arial Black', sans-serif" font-weight="900"
+          font-size="40" fill="#eeeef8" letter-spacing="-1">N</text>
+      </svg>
+      <div class="logo-text">
+        <div class="logo-brand">NOBLE LINK</div>
+        <div class="logo-sub">업무관리 · VER 1.0</div>
+      </div>
+    </div>
+    <span id="sync-dot" class="sync-pill">● SYNC</span>
+  </div>
+  <div class="date-bar">
+    <div id="date-lbl" class="date-lbl"></div>
+    <input type="date" id="date-pick"/>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="loader">
+    <div class="spinner"></div>
+    <div class="load-txt">데이터 로드 중...</div>
+  </div>
+  <div id="body" style="display:none;"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     FIREBASE SDK (Realtime Database)
+     ══════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<script>
+/* ════════════════════════════════════════════
+   ⚙️  여기에 Firebase 설정을 입력하세요
+   Firebase Console → 프로젝트 설정 → 웹 앱
+   ════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey:            "AIzaSyA4f818BjasXWSz2tHu2u1bX0NOA12I1eM",
+  authDomain:        "noblelink.firebaseapp.com",
+  databaseURL:       "https://noblelink-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "noblelink",
+  storageBucket:     "noblelink.firebasestorage.app",
+  messagingSenderId: "542107907290",
+  appId:             "1:542107907290:web:135dc715458550d27d21e3"
+};
+
+/* ════════════════════════════════════════════
+   FIREBASE INIT
+   ════════════════════════════════════════════ */
+let db = null;
+let useFirebase = false;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  useFirebase = (firebaseConfig.apiKey !== "여기에_API_KEY");
+} catch(e) { console.warn('Firebase 미설정, localStorage 사용'); }
+
+/* ════════════════════════════════════════════
+   STORAGE LAYER (Firebase → localStorage fallback)
+   ════════════════════════════════════════════ */
+const store = {
+  async get(path) {
+    if (useFirebase) {
+      const snap = await db.ref(path).get();
+      return snap.exists() ? snap.val() : null;
+    }
+    try { return JSON.parse(localStorage.getItem(path)); } catch { return null; }
+  },
+  async set(path, val) {
+    if (useFirebase) {
+      await db.ref(path).set(val);
+    } else {
+      localStorage.setItem(path, JSON.stringify(val));
+    }
+  },
+  listen(path, cb) {
+    if (useFirebase) {
+      db.ref(path).on('value', snap => cb(snap.exists() ? snap.val() : null));
+    }
+    // localStorage: no realtime; poll handled separately
+  },
+  unlisten(path) {
+    if (useFirebase) db.ref(path).off();
+  }
+};
+
+/* ════════════════════════════════════════════
+   UTILS
+   ════════════════════════════════════════════ */
+const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc   = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ge    = id => document.getElementById(id);
+const toLocal = d => {
+  const r=new Date(d);
+  return `${r.getFullYear()}-${String(r.getMonth()+1).padStart(2,'0')}-${String(r.getDate()).padStart(2,'0')}`;
+};
+const todayStr = () => toLocal(new Date());
+const prevDay  = d => { const [y,m,day]=d.split('-').map(Number); return toLocal(new Date(y,m-1,day-1)); };
+const DOW = ['일','월','화','수','목','금','토'];
+const fmtDate = d => {
+  const [y,m,day]=d.split('-').map(Number);
+  const dw=DOW[new Date(y,m-1,day).getDay()];
+  return `${y}년 ${m}월 ${day}일 (${dw})`;
+};
+const CHECKS = [
+  {k:'read',    l:'읽음', c:'#4a8fff'},
+  {k:'completed',l:'완료',c:'#22c55e'},
+  {k:'carryover',l:'이월',c:'#f59e0b'},
+  {k:'other',   l:'기타', c:'#a78bfa'},
+];
+
+/* ════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════ */
+let S = {
+  date: todayStr(),
+  day:  { today_tasks:[], pending_tasks:[], notice:'' },
+  ret:  [],
+  adding: null,
+  editNotice: false,
+};
+
+/* ════════════════════════════════════════════
+   LOAD
+   ════════════════════════════════════════════ */
+async function loadAll() {
+  ge('loader').style.display = 'flex';
+  ge('body').style.display   = 'none';
+
+  let d = await store.get('noble/day/' + S.date.replace(/-/g,'/'));
+  if (!d) {
+    const pd   = prevDay(S.date);
+    const prev = await store.get('noble/day/' + pd.replace(/-/g,'/'));
+    d = { today_tasks:[], pending_tasks:[], notice:'' };
+    if (prev) {
+      const co = [...(prev.today_tasks||[]),...(prev.pending_tasks||[])]
+        .filter(t => t.checks?.carryover && !t.checks?.completed);
+      d.pending_tasks = co.map(t=>({
+        id:uid(), content:t.content, from:pd,
+        at: new Date().toISOString(),
+        checks:{read:false,completed:false,carryover:false,other:false,other_content:''}
+      }));
+    }
+    if (d.pending_tasks.length) await saveDay(d, true);
+  }
+  const ret = await store.get('noble/returns') || [];
+
+  S.day = Array.isArray(d) ? {today_tasks:[],pending_tasks:[],notice:''} : d;
+  S.ret = Array.isArray(ret) ? ret : Object.values(ret);
+
+  ge('loader').style.display = 'none';
+  ge('body').style.display   = 'block';
+  render();
+
+  // Firebase realtime listeners
+  if (useFirebase) {
+    store.listen('noble/day/' + S.date.replace(/-/g,'/'), nd => {
+      if (!nd) return;
+      S.day = nd; render();
+    });
+    store.listen('noble/returns', nr => {
+      if (!nr) return;
+      S.ret = Array.isArray(nr) ? nr : Object.values(nr);
+      render();
+    });
+  }
+}
+
+/* ════════════════════════════════════════════
+   SAVE
+   ════════════════════════════════════════════ */
+async function saveDay(nd, silent=false) {
+  S.day = nd;
+  setSyncDot('s');
+  await store.set('noble/day/' + S.date.replace(/-/g,'/'), nd);
+  setSyncDot('ok');
+  if (!silent) render();
+}
+async function saveRet(nr) {
+  S.ret = nr;
+  await store.set('noble/returns', nr);
+  render();
+}
+function setSyncDot(s) {
+  const el = ge('sync-dot'); if(!el) return;
+  if(s==='s'){el.textContent='● 저장중';el.style.color='#ff6a00';}
+  else{el.textContent='● SYNC';el.style.color='#22c55e';
+    setTimeout(()=>{el.textContent='● SYNC';el.style.color='';},2200);}
+}
+
+/* ════════════════════════════════════════════
+   RENDER
+   ════════════════════════════════════════════ */
+function render() {
+  const {day,ret,date,adding,editNotice} = S;
+  const today = todayStr(); const isToday = date===today;
+
+  ge('date-lbl').innerHTML = fmtDate(date)
+    + (isToday ? '<span class="today-badge">TODAY</span>' : '');
+
+  const rPend = ret.filter(r=>r.status==='pending');
+  const rRecv = ret.filter(r=>{
+    if(r.status==='received') return true;
+    if(r.status==='inspected'){
+      const id = r.inspected_at?r.inspected_at.slice(0,10):'';
+      return id >= date;
+    }
+    return false;
+  });
+
+  ge('body').innerHTML =
+    secTask('오늘의 업무','today_tasks', day.today_tasks||[],'var(--accent)',  '#ff6a00', adding) +
+    secTask('미수행 업무','pending_tasks',day.pending_tasks||[],'var(--amber)',  '#f59e0b', adding) +
+    secRetPend(rPend, adding) +
+    secRetRecv(rRecv) +
+    secNotice(day.notice||'', editNotice);
+}
+
+function secTask(title, key, tasks, colorVar, colorHex, adding) {
+  const isAdd = adding===key;
+  return `<div class="sec">
+    <div class="sec-hdr">
+      <span class="sec-ttl" style="color:${colorVar};">${title}</span>
+      <button class="add-btn" style="color:${colorHex};border-color:${colorHex};" data-a="open" data-sec="${key}">+ 추가</button>
+    </div>
+    ${tasks.length===0&&!isAdd ? '<div class="empty">— 없음 —</div>' : ''}
+    ${tasks.map(t=>taskCard(t,key,colorHex)).join('')}
+    ${isAdd ? addForm(key,colorHex) : ''}
+  </div>`;
+}
+
+function taskCard(t, sec, borderColor) {
+  const c = t.checks||{};
+  return `<div class="card" style="border-left-color:${borderColor};">
+    <div class="card-row">
+      <div class="card-txt">${esc(t.content)}</div>
+      <button class="del-btn" data-a="del-task" data-sec="${sec}" data-id="${t.id}">×</button>
+    </div>
+    ${t.from?`<div class="card-meta">▲ 이월: ${t.from}</div>`:''}
+    <div class="checks">
+      ${CHECKS.map(ck=>{
+        const on=!!c[ck.k];
+        return `<button class="chk ${on?'on':''}" style="${on?'':''}--chk-c:${ck.c};${on?`border-color:${ck.c};color:${ck.c};background:${ck.c}22;`:''}"
+          data-a="chk" data-sec="${sec}" data-id="${t.id}" data-ck="${ck.k}">${on?'✓ ':''}${ck.l}</button>`;
+      }).join('')}
+    </div>
+    ${c.other ? `<div class="other-wrap">
+      <textarea class="other-ta" maxlength="100" data-a="other-ta" data-sec="${sec}" data-id="${t.id}"
+        placeholder="기타 사항 입력 (최대 100자)">${esc(c.other_content||'')}</textarea>
+      <div class="char-cnt">${(c.other_content||'').length}/100</div>
+    </div>` : ''}
+  </div>`;
+}
+
+function addForm(sec, color) {
+  return `<div class="form-box" style="border-color:${color}44;">
+    <textarea class="form-ta" id="aip-${sec}" placeholder="내용 입력..."></textarea>
+    <div class="form-btns">
+      <button class="btn-ok" style="background:${color};" data-a="submit" data-sec="${sec}">추가</button>
+      <button class="btn-no" data-a="cancel">취소</button>
+    </div>
+  </div>`;
+}
+
+function secRetPend(tasks, adding) {
+  const c='#06b6d4'; const isAdd=adding==='ret_pend';
+  return `<div class="sec">
+    <div class="sec-hdr">
+      <span class="sec-ttl" style="color:${c};">접수할 반품</span>
+      <button class="add-btn" style="color:${c};border-color:${c};" data-a="open" data-sec="ret_pend">+ 추가</button>
+    </div>
+    ${tasks.length===0&&!isAdd?'<div class="empty">— 없음 —</div>':''}
+    ${tasks.map(t=>`<div class="card" style="border-left-color:${c};">
+      <div class="card-row">
+        <div class="card-txt">${esc(t.content)}</div>
+        <button class="del-btn" data-a="del-ret" data-id="${t.id}">×</button>
+      </div>
+      <div class="checks">
+        <button class="recv-btn" data-a="recv" data-id="${t.id}">접수 완료 →</button>
+      </div>
+    </div>`).join('')}
+    ${isAdd?`<div class="form-box" style="border-color:${c}44;">
+      <textarea class="form-ta" id="aip-ret_pend" placeholder="반품 내용 입력..."></textarea>
+      <div class="form-btns">
+        <button class="btn-ok" style="background:${c};" data-a="submit" data-sec="ret_pend">추가</button>
+        <button class="btn-no" data-a="cancel">취소</button>
+      </div>
+    </div>`:''}
+  </div>`;
+}
+
+function secRetRecv(tasks) {
+  const c='#22c55e';
+  return `<div class="sec">
+    <div class="sec-hdr">
+      <span class="sec-ttl" style="color:${c};">접수한 반품</span>
+    </div>
+    ${tasks.length===0?'<div class="empty">— 없음 —</div>':''}
+    ${tasks.map(t=>{
+      const ins=t.status==='inspected';
+      return `<div class="card" style="border-left-color:${ins?'var(--border)':c};${ins?'opacity:.4;':''}">
+        <div class="card-txt" style="${ins?'text-decoration:line-through;color:var(--txt3);':''}">${esc(t.content)}</div>
+        <div class="checks" style="margin-top:9px;">
+          <button class="insp-btn" style="border:1.5px solid ${ins?'var(--border2)':c};color:${ins?'var(--txt3)':c};background:${ins?'transparent':c+'22'};"
+            data-a="insp" data-id="${t.id}">${ins?'✓ 검수완료':'검수완료'}</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function secNotice(notice, editing) {
+  const c='#a78bfa';
+  return `<div class="sec">
+    <div class="sec-hdr">
+      <span class="sec-ttl" style="color:${c};">기타 전달 사항</span>
+      ${!editing?`<button class="add-btn" style="color:${c};border-color:${c};" data-a="edit-notice">수정</button>`:''}
+    </div>
+    ${editing?`<div class="form-box" style="border-color:${c}44;">
+      <textarea class="form-ta" id="notice-ta" style="height:80px;" maxlength="200"
+        placeholder="전달 사항 입력 (최대 200자)">${esc(notice)}</textarea>
+      <div class="char-cnt" id="nc">${notice.length}/200</div>
+      <div class="form-btns">
+        <button class="btn-ok" style="background:${c};" data-a="save-notice">저장</button>
+        <button class="btn-no" data-a="cancel-notice">취소</button>
+      </div>
+    </div>`:`<div class="notice-card">
+      ${notice
+        ?`<div class="notice-txt">${esc(notice)}</div>`
+        :`<div class="empty" style="border:none;padding:6px;">— 없음 —</div>`}
+    </div>`}
+  </div>`;
+}
+
+/* ════════════════════════════════════════════
+   EVENTS
+   ════════════════════════════════════════════ */
+document.addEventListener('click', async e => {
+  const b=e.target.closest('[data-a]'); if(!b) return;
+  const {a,sec,id,ck} = b.dataset;
+
+  if(a==='open'){
+    S.adding=sec; S.editNotice=false; render();
+    setTimeout(()=>{const el=ge('aip-'+sec);if(el)el.focus();},40);
+  }
+  else if(a==='cancel'){S.adding=null;render();}
+  else if(a==='submit'){
+    const el=ge('aip-'+sec); const txt=(el?.value||'').trim(); if(!txt)return;
+    if(sec==='ret_pend'){
+      await saveRet([...S.ret,{id:uid(),content:txt,at:new Date().toISOString(),status:'pending'}]);
+    } else {
+      const ni={id:uid(),content:txt,at:new Date().toISOString(),
+        checks:{read:false,completed:false,carryover:false,other:false,other_content:''}};
+      await saveDay({...S.day,[sec]:[...(S.day[sec]||[]),ni]});
+    }
+    S.adding=null;
+  }
+  else if(a==='del-task'){
+    if(!confirm('삭제할까요?'))return;
+    await saveDay({...S.day,[sec]:S.day[sec].filter(t=>t.id!==id)});
+  }
+  else if(a==='del-ret'){
+    if(!confirm('삭제할까요?'))return;
+    await saveRet(S.ret.filter(r=>r.id!==id));
+  }
+  else if(a==='chk'){
+    const tasks=[...(S.day[sec]||[])]; const i=tasks.findIndex(t=>t.id===id); if(i<0)return;
+    const t={...tasks[i],checks:{...tasks[i].checks}};
+    t.checks[ck]=!t.checks[ck];
+    if(ck==='other'&&!t.checks.other)t.checks.other_content='';
+    tasks[i]=t;
+    await saveDay({...S.day,[sec]:tasks});
+  }
+  else if(a==='recv'){
+    await saveRet(S.ret.map(r=>r.id===id?{...r,status:'received',received_at:new Date().toISOString()}:r));
+  }
+  else if(a==='insp'){
+    const r=S.ret.find(r=>r.id===id); if(!r)return;
+    const ns=r.status==='inspected'?'received':'inspected';
+    await saveRet(S.ret.map(r=>r.id===id?{...r,status:ns,inspected_at:ns==='inspected'?new Date().toISOString():null}:r));
+  }
+  else if(a==='edit-notice'){
+    S.editNotice=true;render();
+    setTimeout(()=>{const el=ge('notice-ta');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},40);
+  }
+  else if(a==='save-notice'){
+    const txt=(ge('notice-ta')?.value||'').slice(0,200);
+    await saveDay({...S.day,notice:txt}); S.editNotice=false;
+  }
+  else if(a==='cancel-notice'){S.editNotice=false;render();}
+});
+
+document.addEventListener('blur', async e => {
+  const el=e.target; if(!el.matches('[data-a="other-ta"]'))return;
+  const {sec,id}=el.dataset; const txt=el.value.slice(0,100);
+  const tasks=[...(S.day[sec]||[])]; const i=tasks.findIndex(t=>t.id===id); if(i<0)return;
+  if(tasks[i].checks.other_content===txt)return;
+  tasks[i]={...tasks[i],checks:{...tasks[i].checks,other_content:txt}};
+  await saveDay({...S.day,[sec]:tasks});
+}, true);
+
+document.addEventListener('input', e => {
+  const el=e.target;
+  if(el.id==='notice-ta'){const nc=ge('nc');if(nc)nc.textContent=el.value.length+'/200';}
+  if(el.matches('[data-a="other-ta"]')){
+    const sib=el.nextElementSibling;if(sib)sib.textContent=el.value.length+'/100';
+  }
+});
+
+ge('date-pick').value = S.date;
+ge('date-pick').addEventListener('change', e=>{
+  if(useFirebase){
+    store.unlisten('noble/day/'+S.date.replace(/-/g,'/'));
+    store.unlisten('noble/returns');
+  }
+  S.date=e.target.value; S.adding=null; S.editNotice=false;
+  loadAll();
+});
+
+/* ════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════ */
+loadAll();
+
+// localStorage fallback polling
+if(!useFirebase){
+  setInterval(async()=>{
+    const nd=JSON.parse(localStorage.getItem('noble/day/'+S.date.replace(/-/g,'/'))||'null');
+    const nr=JSON.parse(localStorage.getItem('noble/returns')||'null');
+    let ch=false;
+    if(nd&&JSON.stringify(nd)!==JSON.stringify(S.day)){S.day=nd;ch=true;}
+    if(nr&&JSON.stringify(nr)!==JSON.stringify(S.ret)){S.ret=nr;ch=true;}
+    if(ch)render();
+  },5000);
+}
+</script>
+</body>
+</html>
