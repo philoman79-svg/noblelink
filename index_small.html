@@ -360,7 +360,8 @@ const CHECKS = [
    ════════════════════════════════════════════ */
 let S = {
   date: todayStr(),
-  day:  { today_tasks:[], pending_tasks:[], notice:'' },
+  day:  { today_tasks:[], pending_tasks:[] },
+  notice: '',
   ret:  [],
   adding: null,
   editNotice: false,
@@ -377,10 +378,15 @@ async function loadAll() {
   if (!d) {
     const pd   = prevDay(S.date);
     const prev = await store.get('noble/day/' + pd.replace(/-/g,'/'));
-    d = { today_tasks:[], pending_tasks:[], notice:'' };
+    d = { today_tasks:[], pending_tasks:[] };
     if (prev) {
-      const co = [...(prev.today_tasks||[]),...(prev.pending_tasks||[])]
+      // 오늘의 업무: 이월 체크한 것만
+      const todayCo = (prev.today_tasks||[])
         .filter(t => t.checks?.carryover && !t.checks?.completed);
+      // 미수행 업무: 완료 안 한 것 전부 자동 이월
+      const pendingCo = (prev.pending_tasks||[])
+        .filter(t => !t.checks?.completed);
+      const co = [...todayCo, ...pendingCo];
       d.pending_tasks = co.map(t=>({
         id:uid(), content:t.content, from:pd,
         at: new Date().toISOString(),
@@ -391,8 +397,12 @@ async function loadAll() {
   }
   const ret = await store.get('noble/returns') || [];
 
-  S.day = Array.isArray(d) ? {today_tasks:[],pending_tasks:[],notice:''} : d;
-  S.ret = Array.isArray(ret) ? ret : Object.values(ret);
+  // 공지사항: 날짜 무관 독립 경로에서 로드
+  const noticeData = await store.get('noble/notice');
+
+  S.day    = Array.isArray(d) ? {today_tasks:[],pending_tasks:[]} : d;
+  S.ret    = Array.isArray(ret) ? ret : Object.values(ret);
+  S.notice = (typeof noticeData === 'string') ? noticeData : '';
 
   ge('loader').style.display = 'none';
   ge('body').style.display   = 'block';
@@ -407,6 +417,10 @@ async function loadAll() {
     store.listen('noble/returns', nr => {
       if (!nr) return;
       S.ret = Array.isArray(nr) ? nr : Object.values(nr);
+      render();
+    });
+    store.listen('noble/notice', nn => {
+      S.notice = (typeof nn === 'string') ? nn : '';
       render();
     });
   }
@@ -425,6 +439,13 @@ async function saveDay(nd, silent=false) {
 async function saveRet(nr) {
   S.ret = nr;
   await store.set('noble/returns', nr);
+  render();
+}
+async function saveNotice(txt) {
+  S.notice = txt;
+  setSyncDot('s');
+  await store.set('noble/notice', txt);
+  setSyncDot('ok');
   render();
 }
 function setSyncDot(s) {
@@ -455,11 +476,11 @@ function render() {
   });
 
   ge('body').innerHTML =
+    secNotice(S.notice, editNotice) +
     secTask('오늘의 업무','today_tasks', day.today_tasks||[],'var(--accent)',  '#ff6a00', adding) +
     secTask('미수행 업무','pending_tasks',day.pending_tasks||[],'var(--amber)',  '#f59e0b', adding) +
     secRetPend(rPend, adding) +
-    secRetRecv(rRecv) +
-    secNotice(day.notice||'', editNotice);
+    secRetRecv(rRecv);
 }
 
 function secTask(title, key, tasks, colorVar, colorHex, adding) {
@@ -559,13 +580,16 @@ function secNotice(notice, editing) {
   const c='#a78bfa';
   return `<div class="sec">
     <div class="sec-hdr">
-      <span class="sec-ttl" style="color:${c};">기타 전달 사항</span>
-      ${!editing?`<button class="add-btn" style="color:${c};border-color:${c};" data-a="edit-notice">수정</button>`:''}
+      <span class="sec-ttl" style="color:${c};">공지사항</span>
+      ${!editing?`<div style="display:flex;gap:6px;">
+        <button class="add-btn" style="color:${c};border-color:${c};" data-a="edit-notice">수정</button>
+        ${notice?`<button class="add-btn" style="color:#e05050;border-color:#e05050;" data-a="del-notice">삭제</button>`:''}
+      </div>`:''}
     </div>
     ${editing?`<div class="form-box" style="border-color:${c}44;">
-      <textarea class="form-ta" id="notice-ta" style="height:80px;" maxlength="200"
-        placeholder="전달 사항 입력 (최대 200자)">${esc(notice)}</textarea>
-      <div class="char-cnt" id="nc">${notice.length}/200</div>
+      <textarea class="form-ta" id="notice-ta" style="height:80px;" maxlength="300"
+        placeholder="공지사항 입력 (최대 300자)">${esc(notice)}</textarea>
+      <div class="char-cnt" id="nc">${notice.length}/300</div>
       <div class="form-btns">
         <button class="btn-ok" style="background:${c};" data-a="save-notice">저장</button>
         <button class="btn-no" data-a="cancel-notice">취소</button>
@@ -630,8 +654,12 @@ document.addEventListener('click', async e => {
     setTimeout(()=>{const el=ge('notice-ta');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}},40);
   }
   else if(a==='save-notice'){
-    const txt=(ge('notice-ta')?.value||'').slice(0,200);
-    await saveDay({...S.day,notice:txt}); S.editNotice=false;
+    const txt=(ge('notice-ta')?.value||'').slice(0,300);
+    await saveNotice(txt); S.editNotice=false;
+  }
+  else if(a==='del-notice'){
+    if(!confirm('공지사항을 삭제할까요?'))return;
+    await saveNotice(''); S.editNotice=false;
   }
   else if(a==='cancel-notice'){S.editNotice=false;render();}
 });
@@ -647,7 +675,7 @@ document.addEventListener('blur', async e => {
 
 document.addEventListener('input', e => {
   const el=e.target;
-  if(el.id==='notice-ta'){const nc=ge('nc');if(nc)nc.textContent=el.value.length+'/200';}
+  if(el.id==='notice-ta'){const nc=ge('nc');if(nc)nc.textContent=el.value.length+'/300';}
   if(el.matches('[data-a="other-ta"]')){
     const sib=el.nextElementSibling;if(sib)sib.textContent=el.value.length+'/100';
   }
