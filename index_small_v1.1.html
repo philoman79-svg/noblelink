@@ -273,7 +273,7 @@ body{overflow-x:hidden;}
       </svg>
       <div class="logo-text">
         <div class="logo-brand">NOBLE LINK</div>
-        <div class="logo-sub">업무관리 · VER 1.2</div>
+        <div class="logo-sub">업무관리 · VER 1.1</div>
       </div>
     </div>
     <div class="hdr-right">
@@ -400,7 +400,6 @@ function applyTheme(k, save) {
 let S = {
   date: todayStr(),
   tasks: {},          // id → task
-  claims: {},         // id → 보상신청 건
   notice: '',
   ret:  [],
   adding: null,
@@ -424,22 +423,6 @@ async function taskRemove(id) {
   const n = {...S.tasks}; delete n[id]; S.tasks = n;
   if (useFirebase) await db.ref('noble/tasks/' + id).remove();
   else localStorage.setItem('noble/tasks', JSON.stringify(S.tasks));
-  render();
-}
-
-/* 보상신청 건 (업무와 동일 방식: 신청완료 전까지 매일 표시) */
-async function claimSave(c) {
-  S.claims = {...S.claims, [c.id]: c};
-  setSyncDot('s');
-  if (useFirebase) await db.ref('noble/claims/' + c.id).set(c);
-  else localStorage.setItem('noble/claims', JSON.stringify(S.claims));
-  setSyncDot('ok');
-  render();
-}
-async function claimRemove(id) {
-  const n = {...S.claims}; delete n[id]; S.claims = n;
-  if (useFirebase) await db.ref('noble/claims/' + id).remove();
-  else localStorage.setItem('noble/claims', JSON.stringify(S.claims));
   render();
 }
 
@@ -480,7 +463,6 @@ async function loadAll() {
     tasks = done ? {} : await migrateTasks();
   }
   const ret = await store.get('noble/returns') || [];
-  S.claims = await store.get('noble/claims') || {};
   const noticeData = await store.get('noble/notice');
 
   S.tasks  = tasks || {};
@@ -493,7 +475,6 @@ async function loadAll() {
 
   if (useFirebase) {
     store.listen('noble/tasks', nt => { S.tasks = nt || {}; render(); });
-    store.listen('noble/claims', nc => { S.claims = nc || {}; render(); });
     store.listen('noble/returns', nr => { S.ret = toArr(nr); render(); });
     store.listen('noble/notice', nn => { S.notice = (typeof nn === 'string') ? nn : ''; render(); });
   }
@@ -554,16 +535,6 @@ function visibleTasks() {
   });
 }
 
-function visibleClaims() {
-  const D = S.date;
-  return Object.values(S.claims).filter(c => {
-    const cr = c.created || '0000-00-00';
-    if (cr > D) return false;
-    if (!c.done) return true;
-    return (c.done_on || cr) >= D;
-  }).sort((a,b) => (a.done?1:0)-(b.done?1:0) || (a.at||'').localeCompare(b.at||''));
-}
-
 function render() {
   const {ret,date,adding,editNotice} = S;
   const isToday = date===todayStr();
@@ -584,7 +555,6 @@ function render() {
   ge('body').innerHTML =
     secNotice(S.notice, editNotice) +
     secTask('미수행 업무', visibleTasks(), 'var(--amber)', adding) +
-    secClaims(visibleClaims(), adding) +
     secRetPend(rPend, adding) +
     secRetRecv(rRecv);
 }
@@ -634,34 +604,6 @@ function addForm(sec, color) {
       <button class="btn-ok" style="background:${color};" data-a="submit" data-sec="${sec}">추가</button>
       <button class="btn-no" data-a="cancel">취소</button>
     </div>
-  </div>`;
-}
-
-function secClaims(items, adding) {
-  const c='var(--red)'; const isAdd=adding==='claims';
-  return `<div class="sec">
-    <div class="sec-hdr">
-      <span class="sec-ttl" style="color:${c};">보상신청 할것</span>
-      <button class="add-btn" style="color:${c};border-color:${c};" data-a="open" data-sec="claims">+ 추가</button>
-    </div>
-    ${items.length===0&&!isAdd?'<div class="empty">— 없음 —</div>':''}
-    ${items.map(t=>{
-      const age = t.created ? dayNum(S.date) - dayNum(t.created) : 0;
-      const [, cm, cd] = (t.created||'').split('-');
-      return `<div class="card ${t.done?'done':''}" style="border-left-color:${c};">
-        <div class="card-row">
-          <div class="card-txt">${esc(t.content)}</div>
-          <button class="del-btn" data-a="del-claim" data-id="${t.id}">×</button>
-        </div>
-        ${age>0?`<div class="card-meta">▲ ${age+1}일째 · ${+cm}/${+cd} 등록</div>`:''}
-        <div class="checks">
-          <button class="chk ${t.ship?'on':''}" style="--chk-c:var(--blue);" data-a="claim-ck" data-ck="ship" data-id="${t.id}">${t.ship?'✓ ':''}배송비</button>
-          <button class="chk ${t.prod?'on':''}" style="--chk-c:var(--amber);" data-a="claim-ck" data-ck="prod" data-id="${t.id}">${t.prod?'✓ ':''}제품비</button>
-          <button class="chk ${t.done?'on':''}" style="--chk-c:var(--green);" data-a="claim-done" data-id="${t.id}">${t.done?'✓ ':''}완료</button>
-        </div>
-      </div>`;
-    }).join('')}
-    ${isAdd?addForm('claims',c).replace('내용 입력...','보상신청 내용 입력...'):''}
   </div>`;
 }
 
@@ -757,9 +699,7 @@ document.addEventListener('click', async e => {
   else if(a==='submit'){
     const el=ge('aip-'+sec); const txt=(el?.value||'').trim(); if(!txt)return;
     S.adding=null; S.draft={};
-    if(sec==='claims'){
-      await claimSave({id:uid(),content:txt,at:new Date().toISOString(),created:S.date,done:false,done_on:null});
-    } else if(sec==='ret_pend'){
+    if(sec==='ret_pend'){
       await saveRet([...S.ret,{id:uid(),content:txt,at:new Date().toISOString(),status:'pending'}]);
     } else {
       await taskSave({id:uid(),content:txt,at:new Date().toISOString(),created:S.date,checks:emptyChecks()});
@@ -768,19 +708,6 @@ document.addEventListener('click', async e => {
   else if(a==='del-task'){
     if(!confirm('삭제할까요?'))return;
     await taskRemove(id);
-  }
-  else if(a==='del-claim'){
-    if(!confirm('삭제할까요?'))return;
-    await claimRemove(id);
-  }
-  else if(a==='claim-ck'){
-    const cur=S.claims[id]; if(!cur)return;
-    await claimSave({...cur,[ck]:!cur[ck]});
-  }
-  else if(a==='claim-done'){
-    const cur=S.claims[id]; if(!cur)return;
-    const done=!cur.done;
-    await claimSave({...cur,done,done_on:done?todayStr():null});
   }
   else if(a==='del-ret'){
     if(!confirm('삭제할까요?'))return;
@@ -854,8 +781,6 @@ if(!useFirebase){
     const nr=JSON.parse(localStorage.getItem('noble/returns')||'null');
     let ch=false;
     if(JSON.stringify(nt)!==JSON.stringify(S.tasks)){S.tasks=nt;ch=true;}
-    const ncl=JSON.parse(localStorage.getItem('noble/claims')||'null')||{};
-    if(JSON.stringify(ncl)!==JSON.stringify(S.claims)){S.claims=ncl;ch=true;}
     if(nr&&JSON.stringify(nr)!==JSON.stringify(S.ret)){S.ret=nr;ch=true;}
     if(ch&&!S.adding&&!S.editNotice)render();
   },5000);
